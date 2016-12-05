@@ -12,6 +12,9 @@
 #include <linux/if.h>
 #include <linux/if_tun.h>
 
+// #define AS_CLIENT YES
+// #define SERVER_HOST ""
+
 #define PORT 54345
 #define MTU 1400
 #define BIND_HOST "0.0.0.0"
@@ -53,7 +56,13 @@ int tun_alloc() {
  */
 void ifconfig() {
   char cmd[1024];
-  snprintf(cmd, sizeof(cmd), "ifconfig tun0 10.8.0.1/16 %d up", MTU);
+
+#ifdef AS_CLIENT
+  snprintf(cmd, sizeof(cmd), "ifconfig tun0 10.8.0.2/16 mtu %d up", MTU);
+#else
+  snprintf(cmd, sizeof(cmd), "ifconfig tun0 10.8.0.1/16 mtu %d up", MTU);
+#endif
+  printf("%s\n", cmd);
   if (system(cmd)) {
     perror("ifconfig tun0 error");
     exit(1);
@@ -64,7 +73,7 @@ void ifconfig() {
 /*
  * Bind UDP port
  */
-int udp_bind() {
+int udp_bind(struct sockaddr *addr, socklen_t* addrlen) {
   struct addrinfo hints;
   struct addrinfo *result;
   int sock, flags;
@@ -72,7 +81,13 @@ int udp_bind() {
   memset(&hints, 0, sizeof(hints));
   hints.ai_socktype = SOCK_DGRAM;
   hints.ai_protocol = IPPROTO_UDP;
-  if (0 != getaddrinfo(BIND_HOST, NULL, &hints, &result)) {
+
+#ifdef AS_CLIENT
+  const char *host = SERVER_HOST;
+#else
+  const char *host = BIND_HOST;
+#endif
+  if (0 != getaddrinfo(host, NULL, &hints, &result)) {
     perror("getaddrinfo error");
     return -1;
   }
@@ -86,6 +101,8 @@ int udp_bind() {
     freeaddrinfo(result);
     return -1;
   }
+  memcpy(addr, result->ai_addr, result->ai_addrlen);
+  *addrlen = result->ai_addrlen;
 
   if (-1 == (sock = socket(result->ai_family, SOCK_DGRAM, IPPROTO_UDP))) {
     perror("can not create socket");
@@ -93,12 +110,14 @@ int udp_bind() {
     return -1;
   }
 
+#ifndef AS_CLIENT
   if (0 != bind(sock, result->ai_addr, result->ai_addrlen)) {
     perror("cannot bind");
     close(sock);
     freeaddrinfo(result);
     return -1;
   }
+#endif
 
   freeaddrinfo(result);
 
@@ -122,16 +141,15 @@ int main(int argc, char **argv) {
   ifconfig();
 
   int udp_fd;
-  if ((udp_fd = udp_bind()) < 0) {
+  struct sockaddr_storage client_addr;
+  socklen_t client_addrlen = sizeof(client_addr);
+
+  if ((udp_fd = udp_bind((struct sockaddr *)&client_addr, &client_addrlen)) < 0) {
     return 1;
   }
 
-
   char buf[MTU];
   bzero(buf, MTU);
-
-  struct sockaddr_storage client_addr;
-  socklen_t client_addrlen = sizeof(client_addr);
 
   fd_set readset;
   FD_ZERO(&readset);
@@ -155,7 +173,7 @@ int main(int argc, char **argv) {
       }
 
       printf("Writing to UDP %d bytes ...\n", r);
-      r = sendto(udp_fd, buf, r, 0, (struct sockeaddr *)&client_addr, client_addrlen);
+      r = sendto(udp_fd, buf, r, 0, (const struct sockaddr *)&client_addr, client_addrlen);
       if (r < 0) {
         // TODO: ignore some errno
         perror("sendto udp_fd error");
@@ -185,7 +203,7 @@ int main(int argc, char **argv) {
   close(udp_fd);
 
 
-  //TODO:
+  //TODO: stub encrypt/decrypt
 
   /* char buffer[999]; */
   /* read(STDIN_FILENO, buffer, 10); */
