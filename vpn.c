@@ -216,6 +216,20 @@ void cleanup_when_sig_exit() {
 }
 
 
+/*
+ * For a real-world VPN, traffic inside UDP tunnel is encrypted
+ * A comprehensive encryption is not easy and not the point for this demo
+ * I'll just leave the stubs here
+ */
+void encrypt(char *plantext, char *ciphertext, int len) {
+  memcpy(ciphertext, plantext, len);
+}
+
+void decrypt(char *ciphertext, char *plantext, int len) {
+  memcpy(plantext, ciphertext, len);
+}
+
+
 int main(int argc, char **argv) {
   int tun_fd;
   if ((tun_fd = tun_alloc()) < 0) {
@@ -235,8 +249,14 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  char buf[MTU];
-  bzero(buf, MTU);
+
+  /*
+   * tun_buf - memory buffer read from/write to tun dev - is always plain
+   * udp_buf - memory buffer read from/write to udp fd - is always encrypted
+   */
+  char tun_buf[MTU], udp_buf[MTU];
+  bzero(tun_buf, MTU);
+  bzero(udp_buf, MTU);
 
   while (1) {
     fd_set readset;
@@ -252,15 +272,17 @@ int main(int argc, char **argv) {
 
     int r;
     if (FD_ISSET(tun_fd, &readset)) {
-      r = read(tun_fd, buf, MTU);
+      r = read(tun_fd, tun_buf, MTU);
       if (r < 0) {
         // TODO: ignore some errno
         perror("read from tun_fd error");
         break;
       }
 
+      encrypt(tun_buf, udp_buf, r);
       printf("Writing to UDP %d bytes ...\n", r);
-      r = sendto(udp_fd, buf, r, 0, (const struct sockaddr *)&client_addr, client_addrlen);
+
+      r = sendto(udp_fd, udp_buf, r, 0, (const struct sockaddr *)&client_addr, client_addrlen);
       if (r < 0) {
         // TODO: ignore some errno
         perror("sendto udp_fd error");
@@ -269,15 +291,17 @@ int main(int argc, char **argv) {
     }
 
     if (FD_ISSET(udp_fd, &readset)) {
-      r = recvfrom(udp_fd, buf, MTU, 0, (struct sockaddr *)&client_addr, &client_addrlen);
+      r = recvfrom(udp_fd, udp_buf, MTU, 0, (struct sockaddr *)&client_addr, &client_addrlen);
       if (r < 0) {
         // TODO: ignore some errno
         perror("recvfrom udp_fd error");
         break;
       }
 
+      decrypt(udp_buf, tun_buf, r);
       printf("Writing to tun %d bytes ...\n", r);
-      r = write(tun_fd, buf, r);
+
+      r = write(tun_fd, tun_buf, r);
       if (r < 0) {
         // TODO: ignore some errno
         perror("write tun_fd error");
@@ -290,8 +314,6 @@ int main(int argc, char **argv) {
   close(udp_fd);
 
   cleanup_route_table();
-
-  //TODO: stub encrypt/decrypt
 
   return 0;
 }
