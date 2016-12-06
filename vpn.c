@@ -9,6 +9,7 @@
 #include <sys/ioctl.h>
 #include <netdb.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <linux/if.h>
 #include <linux/if_tun.h>
 
@@ -70,13 +71,52 @@ void ifconfig() {
 #else
   snprintf(cmd, sizeof(cmd), "ifconfig tun0 10.8.0.1/16 mtu %d up", MTU);
 #endif
-  printf("%s\n", cmd);
-  if (system(cmd)) {
-    perror("ifconfig tun0 error");
-    exit(1);
-  }
+  run(cmd);
 }
 
+
+/*
+ * Setup route table via `iptables` & `ip route`
+ */
+void setup_route_table() {
+  run("sysctl -w net.ipv4.ip_forward=1");
+
+#ifdef AS_CLIENT
+  run("iptables -t nat -A POSTROUTING -o tun0 -j MASQUERADE");
+  run("iptables -I FORWARD 1 -i tun0 -m state --state RELATED,ESTABLISHED -j ACCEPT");
+  run("iptables -I FORWARD 1 -o tun0 -j ACCEPT");
+  char cmd[1024];
+  snprintf(cmd, sizeof(cmd), "ip route add %s via $(ip route show 0/0 | sed -e 's/.* via \([^ ]*\).*/\1/')", SERVER_HOST);
+  run(cmd);
+  run("ip route add 0/1 dev tun0");
+  run("ip route add 128/1 dev tun0");
+#else
+  run("iptables -t nat -A POSTROUTING -s 10.8.0.0/16 ! -d 10.8.0.0/16 -m comment --comment 'vpndemo' -j MASQUERADE");
+  run("iptables -A FORWARD -s 10.8.0.0/16 -m state --state RELATED,ESTABLISHED -j ACCEPT");
+  run("iptables -A FORWARD -d 10.8.0.0/16 -j ACCEPT");
+#endif
+}
+
+
+/*
+ * Cleanup route table
+ */
+void cleanup_route_table() {
+#ifdef AS_CLIENT
+  run("iptables -t nat -D POSTROUTING -o tun0 -j MASQUERADE");
+  run("iptables -D FORWARD -i tun0 -m state --state RELATED,ESTABLISHED -j ACCEPT");
+  run("iptables -D FORWARD -o tun0 -j ACCEPT");
+  char cmd[1024];
+  snprintf(cmd, sizeof(cmd), "ip route del %s", SERVER_HOST);
+  run(cmd);
+  run("ip route del 0/1");
+  run("ip route del 128/1");
+#else
+  run("iptables -t nat -D POSTROUTING -s 10.8.0.0/16 ! -d 10.8.0.0/16 -m comment --comment 'vpndemo' -j MASQUERADE");
+  run("iptables -D FORWARD -s 10.8.0.0/16 -m state --state RELATED,ESTABLISHED -j ACCEPT");
+  run("iptables -D FORWARD -d 10.8.0.0/16 -j ACCEPT");
+#endif
+}
 
 /*
  * Bind UDP port
@@ -211,6 +251,7 @@ int main(int argc, char **argv) {
   close(udp_fd);
 
 
+  cleanup_route_table();
   //TODO: stub encrypt/decrypt
 
   /* char buffer[999]; */
