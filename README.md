@@ -2,7 +2,7 @@ About Code
 ==========
 This code serves as a VPN server for [NE PacketTunnel Illustration](), everything means to be very simple and just illustrate basic principles about VPN.
 
-Inspired by [mptun](https://github.com/cloudwu/mptun) and [ShadowVPN](https://github.com/clowwindy/ShadowVPN).
+Inspired by [simpletun](http://backreference.org/2010/03/26/tuntap-interface-tutorial/), [mptun](https://github.com/cloudwu/mptun) and [ShadowVPN](https://github.com/clowwindy/ShadowVPN).
 
 License
 =======
