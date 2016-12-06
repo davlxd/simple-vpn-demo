@@ -32,7 +32,7 @@ int tun_alloc() {
   int fd, e;
 
   if ((fd = open("/dev/net/tun", O_RDWR)) < 0) {
-    perror("cannot open /dev/net/tun");
+    perror("Cannot open /dev/net/tun");
     return fd;
   }
 
@@ -50,6 +50,14 @@ int tun_alloc() {
   return fd;
 }
 
+
+static void run(char *cmd) {
+  printf("Run `%s`\n", cmd);
+  if (system(cmd)) {
+    perror(cmd);
+    exit(1);
+  }
+}
 
 /*
  * Configure IP address and MTU of VPN interface /dev/tun0
@@ -105,14 +113,14 @@ int udp_bind(struct sockaddr *addr, socklen_t* addrlen) {
   *addrlen = result->ai_addrlen;
 
   if (-1 == (sock = socket(result->ai_family, SOCK_DGRAM, IPPROTO_UDP))) {
-    perror("can not create socket");
+    perror("Cannot create socket");
     freeaddrinfo(result);
     return -1;
   }
 
 #ifndef AS_CLIENT
   if (0 != bind(sock, result->ai_addr, result->ai_addrlen)) {
-    perror("cannot bind");
+    perror("Cannot bind");
     close(sock);
     freeaddrinfo(result);
     return -1;
