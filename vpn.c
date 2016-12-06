@@ -181,12 +181,42 @@ int udp_bind(struct sockaddr *addr, socklen_t* addrlen) {
 }
 
 
+void cleanup(int signo) {
+  printf("Goodbye, cruel world....\n");
+  if (signo == SIGHUP || signo == SIGINT || signo == SIGTERM) {
+    cleanup_route_table();
+    exit(0);
+  }
+}
+
+void cleanup_when_sig_exit() {
+  struct sigaction sa;
+  sa.sa_handler = &cleanup;
+  sa.sa_flags = SA_RESTART;
+  sigfillset(&sa.sa_mask);
+
+  if (sigaction(SIGHUP, &sa, NULL) < 0) {
+    perror("Cannot handle SIGHUP");
+  }
+  if (sigaction(SIGINT, &sa, NULL) < 0) {
+    perror("Cannot handle SIGINT");
+  }
+  if (sigaction(SIGTERM, &sa, NULL) < 0) {
+    perror("Cannot handle SIGTERM");
+  }
+}
+
+
 int main(int argc, char **argv) {
   int tun_fd;
   if ((tun_fd = tun_alloc()) < 0) {
     return 1;
   }
+
   ifconfig();
+  setup_route_table();
+  cleanup_when_sig_exit();
+
 
   int udp_fd;
   struct sockaddr_storage client_addr;
