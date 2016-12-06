@@ -151,13 +151,13 @@ int main(int argc, char **argv) {
   char buf[MTU];
   bzero(buf, MTU);
 
-  fd_set readset;
-  FD_ZERO(&readset);
-  FD_SET(tun_fd, &readset);
-  FD_SET(udp_fd, &readset);
-  int max_fd = max(tun_fd, udp_fd) + 1;
-
   while (1) {
+    fd_set readset;
+    FD_ZERO(&readset);
+    FD_SET(tun_fd, &readset);
+    FD_SET(udp_fd, &readset);
+    int max_fd = max(tun_fd, udp_fd) + 1;
+
     if (-1 == select(max_fd, &readset, NULL, NULL, NULL)) {
       perror("select error");
       break;
