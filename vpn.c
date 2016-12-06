@@ -52,13 +52,17 @@ int tun_alloc() {
 }
 
 
+/*
+ * Execute commands
+ */
 static void run(char *cmd) {
-  printf("Run `%s`\n", cmd);
+  printf("Execute `%s`\n", cmd);
   if (system(cmd)) {
     perror(cmd);
     exit(1);
   }
 }
+
 
 /*
  * Configure IP address and MTU of VPN interface /dev/tun0
@@ -117,6 +121,7 @@ void cleanup_route_table() {
   run("iptables -D FORWARD -d 10.8.0.0/16 -j ACCEPT");
 #endif
 }
+
 
 /*
  * Bind UDP port
@@ -181,6 +186,10 @@ int udp_bind(struct sockaddr *addr, socklen_t* addrlen) {
 }
 
 
+
+/*
+ * Catch Ctrl-C and `kill`s, make sure route table gets cleaned before this process exit
+ */
 void cleanup(int signo) {
   printf("Goodbye, cruel world....\n");
   if (signo == SIGHUP || signo == SIGINT || signo == SIGTERM) {
@@ -280,13 +289,9 @@ int main(int argc, char **argv) {
   close(tun_fd);
   close(udp_fd);
 
-
   cleanup_route_table();
-  //TODO: stub encrypt/decrypt
 
-  /* char buffer[999]; */
-  /* read(STDIN_FILENO, buffer, 10); */
-  /* printf("%s\n", buffer); */
+  //TODO: stub encrypt/decrypt
 
   return 0;
 }
