@@ -13,12 +13,18 @@
 #include <linux/if.h>
 #include <linux/if_tun.h>
 
+/*
+ * The following lines serve as configurations
+ * Uncomment first 2 lines to run as vpn client
+ */
+
 // #define AS_CLIENT YES
 // #define SERVER_HOST ""
 
 #define PORT 54345
 #define MTU 1400
 #define BIND_HOST "0.0.0.0"
+
 
 static int max(int a, int b) {
   return a > b ? a : b;

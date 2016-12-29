@@ -4,6 +4,12 @@ This code serves as a VPN server for [NE PacketTunnel Illustration](), everythin
 
 Inspired by [simpletun](http://backreference.org/2010/03/26/tuntap-interface-tutorial/), [mptun](https://github.com/cloudwu/mptun) and [ShadowVPN](https://github.com/clowwindy/ShadowVPN).
 
+
+Usage & Configuration
+=====================
+Just compile and run, all configurations are at the beginning of source code `vpn.c` as C `#define` macros.
+
+
 License
 =======
 The MIT License (MIT)
