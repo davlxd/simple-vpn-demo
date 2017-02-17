@@ -7,7 +7,8 @@ Inspired by [simpletun](http://backreference.org/2010/03/26/tuntap-interface-tut
 
 Usage & Configuration
 =====================
-Just compile and run, all configurations are at the beginning of source code `vpn.c` as C `#define` macros.
+Just compile and run on **Linux** machines, all configurations are at the beginning of source code `vpn.c` as C `#define` macros.
+
 
 
 License
