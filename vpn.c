@@ -137,6 +137,7 @@ int udp_bind(struct sockaddr *addr, socklen_t* addrlen) {
   struct addrinfo *result;
   int sock, flags;
 
+
   memset(&hints, 0, sizeof(hints));
   hints.ai_socktype = SOCK_DGRAM;
   hints.ai_protocol = IPPROTO_UDP;
