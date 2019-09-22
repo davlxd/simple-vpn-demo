@@ -3,6 +3,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <assert.h>
+#include <errno.h>
+#include <stdbool.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -221,6 +223,9 @@ void cleanup_when_sig_exit() {
   }
 }
 
+static inline bool is_errno_can_be_ignore() {
+  return errno == EAGAIN;
+}
 
 /*
  * For a real-world VPN, traffic inside UDP tunnel is encrypted
@@ -280,7 +285,8 @@ int main(int argc, char **argv) {
     if (FD_ISSET(tun_fd, &readset)) {
       r = read(tun_fd, tun_buf, MTU);
       if (r < 0) {
-        // TODO: ignore some errno
+        if(is_errno_can_be_ignore())
+          continue;
         perror("read from tun_fd error");
         break;
       }
@@ -290,7 +296,8 @@ int main(int argc, char **argv) {
 
       r = sendto(udp_fd, udp_buf, r, 0, (const struct sockaddr *)&client_addr, client_addrlen);
       if (r < 0) {
-        // TODO: ignore some errno
+        if(is_errno_can_be_ignore())
+          continue;
         perror("sendto udp_fd error");
         break;
       }
@@ -299,7 +306,8 @@ int main(int argc, char **argv) {
     if (FD_ISSET(udp_fd, &readset)) {
       r = recvfrom(udp_fd, udp_buf, MTU, 0, (struct sockaddr *)&client_addr, &client_addrlen);
       if (r < 0) {
-        // TODO: ignore some errno
+        if(is_errno_can_be_ignore())
+          continue;
         perror("recvfrom udp_fd error");
         break;
       }
@@ -309,7 +317,8 @@ int main(int argc, char **argv) {
 
       r = write(tun_fd, tun_buf, r);
       if (r < 0) {
-        // TODO: ignore some errno
+        if(is_errno_can_be_ignore())
+          continue;
         perror("write tun_fd error");
         break;
       }
